@@ -1,0 +1,180 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local SoundService = game:GetService("SoundService")
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "CheriFontLoader"
+gui.IgnoreGuiInset = true
+gui.ResetOnSpawn = false
+gui.Parent = game.CoreGui
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.fromScale(1,1)
+frame.BackgroundColor3 = Color3.fromRGB(20, 10, 25)
+frame.BorderSizePixel = 0
+
+local startSound = Instance.new("Sound", SoundService)
+startSound.SoundId = "rbxassetid://9120129802"
+startSound.Volume = 0.7
+startSound:Play()
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.fromScale(1,0.15)
+title.Position = UDim2.fromScale(0,0.35)
+title.BackgroundTransparency = 1
+title.Text = "CHERI FONT"
+title.TextColor3 = Color3.fromRGB(230, 150, 255)
+title.TextScaled = true
+title.Font = Enum.Font.GothamBold
+
+local stroke = Instance.new("UIStroke", title)
+stroke.Color = Color3.fromRGB(230, 150, 255)
+stroke.Thickness = 2
+stroke.Transparency = 0.2
+
+local credit = Instance.new("TextLabel", frame)
+credit.Size = UDim2.fromScale(1,0.05)
+credit.Position = UDim2.fromScale(0,0.52)
+credit.BackgroundTransparency = 1
+credit.Text = "Elegant Typography Loaded"
+credit.TextColor3 = Color3.fromRGB(200, 120, 230)
+credit.TextScaled = true
+credit.Font = Enum.Font.Gotham
+
+local barBack = Instance.new("Frame", frame)
+barBack.Size = UDim2.fromScale(0.45,0.025)
+barBack.Position = UDim2.fromScale(0.275,0.6)
+barBack.BackgroundColor3 = Color3.fromRGB(40, 25, 45)
+barBack.BorderSizePixel = 0
+Instance.new("UICorner", barBack).CornerRadius = UDim.new(0,14)
+
+local barFill = Instance.new("Frame", barBack)
+barFill.Size = UDim2.fromScale(0,1)
+barFill.BackgroundColor3 = Color3.fromRGB(230, 150, 255)
+barFill.BorderSizePixel = 0
+Instance.new("UICorner", barFill).CornerRadius = UDim.new(0,14)
+
+TweenService:Create(
+	barFill,
+	TweenInfo.new(4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+	{Size = UDim2.fromScale(1,1)}
+):Play()
+
+task.wait(4.2)
+
+local popSound = Instance.new("Sound", SoundService)
+popSound.SoundId = "rbxassetid://9118828561"
+popSound.Volume = 0.8
+
+local cheriText = Instance.new("TextLabel", frame)
+cheriText.Size = UDim2.fromScale(0.6,0.18)
+cheriText.Position = UDim2.fromScale(0.2,1.1)
+cheriText.BackgroundTransparency = 1
+cheriText.Text = "CHÉRI"
+cheriText.TextScaled = true
+cheriText.TextColor3 = Color3.fromRGB(240, 160, 255)
+cheriText.Font = Enum.Font.GothamBlack
+cheriText.TextStrokeTransparency = 0.7
+cheriText.TextStrokeColor3 = Color3.fromRGB(180, 100, 220)
+
+popSound:Play()
+
+TweenService:Create(
+	cheriText,
+	TweenInfo.new(0.9, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+	{Position = UDim2.fromScale(0.2,0.4)}
+):Play()
+
+task.wait(1.5)
+
+TweenService:Create(
+	cheriText,
+	TweenInfo.new(0.8),
+	{TextTransparency = 1, TextStrokeTransparency = 1}
+):Play()
+
+task.wait(0.9)
+
+-- === CHERI FONT LOADING SECTION ===
+-- You need to modify the filename below to match your actual Cheri font file
+
+local cheriFontFilename = "cheri.TTF"  -- Change this to your actual filename
+
+if not isfile(cheriFontFilename) then
+    warn("⚠️ Cheri font file not found! Expected file: " .. cheriFontFilename)
+    warn("Please make sure your Cheri font file is named correctly and placed in the workspace.")
+    
+    -- Show error message
+    local errorMsg = Instance.new("TextLabel", frame)
+    errorMsg.Size = UDim2.fromScale(0.8,0.1)
+    errorMsg.Position = UDim2.fromScale(0.1,0.7)
+    errorMsg.BackgroundTransparency = 1
+    errorMsg.Text = "Font file '" .. cheriFontFilename .. "' not found!"
+    errorMsg.TextColor3 = Color3.fromRGB(255, 100, 100)
+    errorMsg.TextScaled = true
+    errorMsg.Font = Enum.Font.GothamBold
+    
+    task.wait(3)
+    
+    TweenService:Create(
+        frame,
+        TweenInfo.new(0.6),
+        {BackgroundTransparency = 1}
+    ):Play()
+    task.wait(0.7)
+    gui:Destroy()
+    return
+end
+
+-- Create font descriptor
+writefile("cheri_font.json", HttpService:JSONEncode({
+    name = "Cheri",
+    faces = {{
+        name = "Regular",
+        weight = 400,
+        style = "normal",
+        assetId = getcustomasset(cheriFontFilename)
+    }}
+}))
+
+local cheriFont = Font.new(getcustomasset("cheri_font.json"))
+local badfont = tostring(Font.new("rbxasset://LuaPackages/Packages/_Index/BuilderIcons/BuilderIcons/BuilderIcons.json"))
+
+local function donttouch(this)
+    if this.TextStrokeTransparency ~= 1 then return false end
+    local cur = tostring(this.FontFace)
+    return cur == badfont or string.find(cur, "BuilderIcons")
+end
+
+local function changeit(txt)
+    if txt:IsA("TextLabel") or txt:IsA("TextButton") or txt:IsA("TextBox") then
+        if not donttouch(txt) then
+            txt.FontFace = cheriFont
+            -- Optional: Add some styling to enhance the Cheri font
+            txt.TextColor3 = Color3.fromRGB(240, 180, 255)
+        end
+    end
+end
+
+-- Apply to existing elements
+for _, v in ipairs(game:GetDescendants()) do
+    task.spawn(function() changeit(v) end)
+end
+
+-- Apply to new elements
+game.DescendantAdded:Connect(function(obj)
+    task.spawn(function() changeit(obj) end)
+end)
+
+print("✅ Cheri font successfully loaded and applied!")
+
+-- Fade out and clean up
+TweenService:Create(
+    frame,
+    TweenInfo.new(0.8),
+    {BackgroundTransparency = 1}
+):Play()
+
+task.wait(1)
+gui:Destroy()
