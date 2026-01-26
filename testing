@@ -1,0 +1,280 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local SoundService = game:GetService("SoundService")
+local RunService = game:GetService("RunService")
+
+-- Create the loader GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "CheriFontLoader"
+gui.IgnoreGuiInset = true
+gui.ResetOnSpawn = false
+gui.Parent = game.CoreGui
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.fromScale(1,1)
+frame.BackgroundColor3 = Color3.fromRGB(10, 5, 15) -- Dark purple background
+frame.BorderSizePixel = 0
+
+-- Loader title with screenshot colors
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.fromScale(1,0.15)
+title.Position = UDim2.fromScale(0,0.35)
+title.BackgroundTransparency = 1
+title.Text = "CHÉRI FONT LOADED"
+title.TextColor3 = Color3.fromRGB(255, 100, 200) -- Pink from screenshot
+title.TextScaled = true
+title.Font = Enum.Font.GothamBold
+
+-- Add the exact gradient from screenshot
+local titleGradient = Instance.new("UIGradient", title)
+titleGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 100, 200)),   -- Pink
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(200, 80, 255)),  -- Purple
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 150, 255))    -- Blue
+})
+titleGradient.Rotation = 45
+
+local titleStroke = Instance.new("UIStroke", title)
+titleStroke.Color = Color3.fromRGB(255, 150, 255)
+titleStroke.Thickness = 2
+titleStroke.Transparency = 0.3
+
+-- Progress bar with screenshot colors
+local barBack = Instance.new("Frame", frame)
+barBack.Size = UDim2.fromScale(0.45,0.025)
+barBack.Position = UDim2.fromScale(0.275,0.6)
+barBack.BackgroundColor3 = Color3.fromRGB(30, 20, 40)
+barBack.BorderSizePixel = 0
+Instance.new("UICorner", barBack).CornerRadius = UDim.new(0,14)
+
+local barFill = Instance.new("Frame", barBack)
+barFill.Size = UDim2.fromScale(0,1)
+barFill.BackgroundColor3 = Color3.fromRGB(255, 100, 200) -- Pink from screenshot
+barFill.BorderSizePixel = 0
+Instance.new("UICorner", barFill).CornerRadius = UDim.new(0,14)
+
+-- Add gradient to progress bar
+local barGradient = Instance.new("UIGradient", barFill)
+barGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 100, 200)),   -- Pink
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(200, 80, 255)),  -- Purple
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 150, 255))    -- Blue
+})
+
+TweenService:Create(
+    barFill,
+    TweenInfo.new(3.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+    {Size = UDim2.fromScale(1,1)}
+):Play()
+
+-- Add loading percentage text
+local percentText = Instance.new("TextLabel", frame)
+percentText.Size = UDim2.fromScale(0.2,0.05)
+percentText.Position = UDim2.fromScale(0.4,0.63)
+percentText.BackgroundTransparency = 1
+percentText.Text = "0%"
+percentText.TextColor3 = Color3.fromRGB(255, 150, 255)
+percentText.TextScaled = true
+percentText.Font = Enum.Font.GothamBold
+
+-- Animate percentage
+local startTime = tick()
+local connection = RunService.Heartbeat:Connect(function()
+    local elapsed = tick() - startTime
+    local progress = math.min(elapsed / 3.5, 1)
+    local percent = math.floor(progress * 100)
+    percentText.Text = percent .. "%"
+    
+    -- Update gradient rotation
+    titleGradient.Rotation = (tick() * 20) % 360
+    
+    if progress >= 1 then
+        connection:Disconnect()
+    end
+end)
+
+task.wait(3.8)
+
+-- Fade out loader
+TweenService:Create(
+    frame,
+    TweenInfo.new(0.8),
+    {BackgroundTransparency = 1}
+):Play()
+TweenService:Create(
+    title,
+    TweenInfo.new(0.8),
+    {TextTransparency = 1}
+):Play()
+TweenService:Create(
+    barBack,
+    TweenInfo.new(0.8),
+    {BackgroundTransparency = 1}
+):Play()
+TweenService:Create(
+    percentText,
+    TweenInfo.new(0.8),
+    {TextTransparency = 1}
+):Play()
+
+task.wait(1)
+
+-- === CHERI FONT LOADING ===
+local cheriFontFilename = "cheri.ttf"
+
+if not isfile(cheriFontFilename) then
+    warn("⚠️ Cheri font file not found!")
+    gui:Destroy()
+    return
+end
+
+writefile("cheri_font.json", HttpService:JSONEncode({
+    name = "Chéri",
+    faces = {{
+        name = "Regular",
+        weight = 400,
+        style = "normal",
+        assetId = getcustomasset(cheriFontFilename)
+    }}
+}))
+
+local cheriFont = Font.new(getcustomasset("cheri_font.json"))
+
+-- EXACT COLORS FROM YOUR SCREENSHOT
+local screenshotColors = {
+    Color3.fromRGB(255, 100, 200),   -- Main pink
+    Color3.fromRGB(220, 80, 220),    -- Pink-purple
+    Color3.fromRGB(180, 60, 240),    -- Purple
+    Color3.fromRGB(140, 80, 255),    -- Purple-blue
+    Color3.fromRGB(100, 150, 255),   -- Blue
+    Color3.fromRGB(80, 200, 255)     -- Light blue
+}
+
+local function applyScreenshotStyle(txt)
+    -- Create gradient with exact screenshot colors
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, screenshotColors[1]),
+        ColorSequenceKeypoint.new(0.2, screenshotColors[2]),
+        ColorSequenceKeypoint.new(0.4, screenshotColors[3]),
+        ColorSequenceKeypoint.new(0.6, screenshotColors[4]),
+        ColorSequenceKeypoint.new(0.8, screenshotColors[5]),
+        ColorSequenceKeypoint.new(1, screenshotColors[6])
+    })
+    gradient.Rotation = 90
+    
+    -- Add glow effects like in screenshot
+    local outerGlow = Instance.new("UIStroke")
+    outerGlow.Color = screenshotColors[6]  -- Blue glow
+    outerGlow.Thickness = 3
+    outerGlow.Transparency = 0.7
+    
+    local innerGlow = Instance.new("UIStroke")
+    innerGlow.Color = screenshotColors[1]  -- Pink glow
+    innerGlow.Thickness = 1.5
+    innerGlow.Transparency = 0.5
+    
+    -- Apply to text
+    gradient.Parent = txt
+    outerGlow.Parent = txt
+    innerGlow.Parent = txt
+    
+    -- Add subtle shadow like in screenshot
+    local textShadow = txt:Clone()
+    textShadow.Name = "TextShadow"
+    textShadow.TextColor3 = Color3.fromRGB(0, 0, 0)
+    textShadow.TextTransparency = 0.7
+    textShadow.BackgroundTransparency = 1
+    textShadow.Position = UDim2.new(0, 1, 0, 1)
+    textShadow.ZIndex = txt.ZIndex - 1
+    textShadow.Parent = txt.Parent
+end
+
+local badfont = tostring(Font.new("rbxasset://LuaPackages/Packages/_Index/BuilderIcons/BuilderIcons/BuilderIcons.json"))
+
+local function donttouch(this)
+    if this.TextStrokeTransparency ~= 1 then return false end
+    local cur = tostring(this.FontFace)
+    return cur == badfont or string.find(cur, "BuilderIcons")
+end
+
+local function changeit(txt)
+    if txt:IsA("TextLabel") or txt:IsA("TextButton") or txt:IsA("TextBox") then
+        if not donttouch(txt) then
+            txt.FontFace = cheriFont
+            applyScreenshotStyle(txt)
+            
+            -- Optional: Add hashtag styling like in screenshot
+            if string.find(txt.Text, "#") then
+                txt.TextSize = txt.TextSize - 2
+                local hashtagGradient = Instance.new("UIGradient", txt)
+                hashtagGradient.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 150, 255)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 200, 255))
+                })
+            end
+        end
+    end
+end
+
+-- Apply to existing UI
+for _, v in ipairs(game:GetDescendants()) do
+    task.spawn(function() 
+        changeit(v)
+    end)
+end
+
+-- Apply to new UI
+game.DescendantAdded:Connect(function(obj)
+    task.spawn(function() 
+        changeit(obj)
+    end)
+end)
+
+-- Notification
+local notify = Instance.new("ScreenGui", game.CoreGui)
+local notifFrame = Instance.new("Frame", notify)
+notifFrame.Size = UDim2.new(0, 300, 0, 60)
+notifFrame.Position = UDim2.new(1, -320, 1, -80)
+notifFrame.BackgroundColor3 = Color3.fromRGB(20, 10, 30)
+notifFrame.BorderSizePixel = 0
+Instance.new("UICorner", notifFrame).CornerRadius = UDim.new(0, 12)
+
+local notifText = Instance.new("TextLabel", notifFrame)
+notifText.Size = UDim2.new(1, -20, 1, -20)
+notifText.Position = UDim2.new(0, 10, 0, 10)
+notifText.BackgroundTransparency = 1
+notifText.Text = "CHÉRI font applied!\nExact screenshot colors"
+notifText.TextColor3 = Color3.fromRGB(255, 150, 255)
+notifText.TextSize = 14
+notifText.Font = Enum.Font.Gotham
+notifText.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Add gradient to notification
+local notifGradient = Instance.new("UIGradient", notifText)
+notifGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, screenshotColors[1]),
+    ColorSequenceKeypoint.new(1, screenshotColors[6])
+})
+
+-- Animate notification
+TweenService:Create(
+    notifFrame,
+    TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+    {Position = UDim2.new(1, -320, 1, -100)}
+):Play()
+
+task.wait(3)
+
+TweenService:Create(
+    notifFrame,
+    TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.In),
+    {Position = UDim2.new(1, -320, 1, 100)}
+):Play()
+
+task.wait(0.6)
+notify:Destroy()
+gui:Destroy()
+
+print("✅ Chéri font applied with exact screenshot colors!")
