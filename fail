@@ -1,0 +1,235 @@
+-- Pastel Cheri Font Loader with White Contours
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+
+-- === PASTEL COLORS (not vibrant) ===
+local PASTEL_GRADIENT_COLORS = {
+    Color3.fromRGB(255, 200, 230),   -- Soft Pink (#FFC8E6)
+    Color3.fromRGB(230, 190, 255),   -- Lavender (#E6BEFF)
+    Color3.fromRGB(200, 210, 255),   -- Soft Blue (#C8D2FF)
+    Color3.fromRGB(220, 230, 255),   -- Light Blue (#DCE6FF)
+    Color3.fromRGB(240, 220, 255)    -- Pale Lavender (#F0DCFF)
+}
+
+-- Simple loader
+local gui = Instance.new("ScreenGui")
+gui.Name = "PastelCheriLoader"
+gui.ResetOnSpawn = false
+gui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(1, 0, 1, 0)
+frame.BackgroundColor3 = Color3.fromRGB(240, 240, 245)  -- Light background
+frame.BorderSizePixel = 0
+frame.Parent = gui
+
+-- Loading text with white contour
+local loadingText = Instance.new("TextLabel")
+loadingText.Size = UDim2.new(1, 0, 0.1, 0)
+loadingText.Position = UDim2.new(0, 0, 0.45, 0)
+loadingText.BackgroundTransparency = 1
+loadingText.Text = "Loading Chéri..."
+loadingText.TextColor3 = PASTEL_GRADIENT_COLORS[1]
+loadingText.TextSize = 32
+loadingText.Font = Enum.Font.GothamBold
+loadingText.Parent = frame
+
+-- White contour (stroke)
+local textStroke = Instance.new("UIStroke")
+textStroke.Color = Color3.fromRGB(255, 255, 255)  -- WHITE contour
+textStroke.Thickness = 3
+textStroke.Transparency = 0.2
+textStroke.Parent = loadingText
+
+-- Apply pastel gradient
+local textGradient = Instance.new("UIGradient")
+textGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, PASTEL_GRADIENT_COLORS[1]),
+    ColorSequenceKeypoint.new(0.5, PASTEL_GRADIENT_COLORS[3]),
+    ColorSequenceKeypoint.new(1, PASTEL_GRADIENT_COLORS[5])
+})
+textGradient.Rotation = 90
+textGradient.Parent = loadingText
+
+-- Simple progress bar
+local progressBack = Instance.new("Frame")
+progressBack.Size = UDim2.new(0.4, 0, 0.015, 0)
+progressBack.Position = UDim2.new(0.3, 0, 0.55, 0)
+progressBack.BackgroundColor3 = Color3.fromRGB(220, 220, 230)
+progressBack.BorderSizePixel = 0
+progressBack.Parent = frame
+
+local progressFill = Instance.new("Frame")
+progressFill.Size = UDim2.new(0, 0, 1, 0)
+progressFill.BackgroundColor3 = PASTEL_GRADIENT_COLORS[1]
+progressFill.BorderSizePixel = 0
+progressFill.Parent = progressBack
+
+-- White contour for progress bar
+local progressStroke = Instance.new("UIStroke")
+progressStroke.Color = Color3.fromRGB(255, 255, 255)  -- WHITE contour
+progressStroke.Thickness = 2
+progressStroke.Parent = progressBack
+
+-- Pastel gradient for progress
+local progressGradient = Instance.new("UIGradient")
+progressGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, PASTEL_GRADIENT_COLORS[1]),
+    ColorSequenceKeypoint.new(1, PASTEL_GRADIENT_COLORS[3])
+})
+progressGradient.Parent = progressFill
+
+-- Animate progress
+TweenService:Create(progressFill, TweenInfo.new(2), {Size = UDim2.new(1, 0, 1, 0)}):Play()
+task.wait(2.2)
+
+-- Fade out
+TweenService:Create(frame, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+task.wait(0.6)
+
+-- === LOAD CHERI FONT ===
+-- IMPORTANT: Changed to cheri.TTF (uppercase)
+local cheriFontFilename = "cheri.TTF"
+
+if not isfile(cheriFontFilename) then
+    -- Try lowercase version if uppercase doesn't exist
+    cheriFontFilename = "cheri.ttf"
+    if not isfile(cheriFontFilename) then
+        warn("❌ Cheri font file not found!")
+        gui:Destroy()
+        return
+    end
+end
+
+-- Create font descriptor
+writefile("cheri_font.json", HttpService:JSONEncode({
+    name = "Chéri",
+    faces = {{
+        name = "Regular",
+        weight = 400,
+        style = "normal",
+        assetId = getcustomasset(cheriFontFilename)
+    }}
+}))
+
+local cheriFont = Font.new(getcustomasset("cheri_font.json"))
+
+-- Function to apply pastel style with white contours
+local function applyPastelStyle(textObj)
+    if textObj:IsA("TextLabel") or textObj:IsA("TextButton") or textObj:IsA("TextBox") then
+        -- Skip system/builder icons
+        if textObj.TextStrokeTransparency ~= 1 then
+            local currentFont = tostring(textObj.FontFace)
+            if string.find(currentFont, "BuilderIcons") then
+                return
+            end
+        end
+        
+        -- Apply Cheri font
+        textObj.FontFace = cheriFont
+        
+        -- Apply pastel gradient
+        local gradient = Instance.new("UIGradient")
+        gradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, PASTEL_GRADIENT_COLORS[1]),
+            ColorSequenceKeypoint.new(0.3, PASTEL_GRADIENT_COLORS[2]),
+            ColorSequenceKeypoint.new(0.6, PASTEL_GRADIENT_COLORS[3]),
+            ColorSequenceKeypoint.new(1, PASTEL_GRADIENT_COLORS[4])
+        })
+        gradient.Rotation = 90
+        
+        -- WHITE contour (stroke)
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = Color3.fromRGB(255, 255, 255)  -- WHITE
+        stroke.Thickness = 1.5
+        stroke.Transparency = 0.1
+        
+        -- Apply to text
+        gradient.Parent = textObj
+        stroke.Parent = textObj
+        
+        -- Increase text size slightly for better readability
+        textObj.TextSize = textObj.TextSize + 1
+    end
+end
+
+-- Optimized application (batched to reduce lag)
+local function applyToExistingElements()
+    local elements = game:GetDescendants()
+    local batchSize = 50  -- Process in batches to avoid lag
+    
+    for i = 1, #elements, batchSize do
+        task.wait()  -- Yield to prevent freezing
+        
+        local batchEnd = math.min(i + batchSize - 1, #elements)
+        for j = i, batchEnd do
+            local element = elements[j]
+            if element:IsA("TextLabel") or element:IsA("TextButton") or element:IsA("TextBox") then
+                applyPastelStyle(element)
+            end
+        end
+    end
+end
+
+-- Apply to existing elements (batched for performance)
+task.spawn(applyToExistingElements)
+
+-- Monitor for new elements (optimized)
+local connection
+connection = game.DescendantAdded:Connect(function(element)
+    task.wait(0.1)  -- Small delay to prevent spam
+    if element:IsA("TextLabel") or element:IsA("TextButton") or element:IsA("TextBox") then
+        applyPastelStyle(element)
+    end
+end)
+
+-- Clean up loader
+gui:Destroy()
+
+-- Simple notification
+local notify = Instance.new("ScreenGui", game.Players.LocalPlayer:WaitForChild("PlayerGui"))
+local notifFrame = Instance.new("Frame")
+notifFrame.Size = UDim2.new(0, 250, 0, 50)
+notifFrame.Position = UDim2.new(1, -260, 1, -60)
+notifFrame.BackgroundColor3 = Color3.fromRGB(245, 240, 250)
+notifFrame.BorderSizePixel = 0
+notifFrame.Parent = notify
+
+-- White contour for notification
+local notifStroke = Instance.new("UIStroke")
+notifStroke.Color = Color3.fromRGB(255, 255, 255)
+notifStroke.Thickness = 2
+notifStroke.Parent = notifFrame
+
+local notifText = Instance.new("TextLabel")
+notifText.Size = UDim2.new(1, -10, 1, -10)
+notifText.Position = UDim2.new(0, 5, 0, 5)
+notifText.BackgroundTransparency = 1
+notifText.Text = "Chéri font applied ✓"
+notifText.TextColor3 = PASTEL_GRADIENT_COLORS[2]
+notifText.TextSize = 16
+notifText.Font = Enum.Font.Gotham
+notifText.Parent = notifFrame
+
+-- White contour for text
+local notifTextStroke = Instance.new("UIStroke")
+notifTextStroke.Color = Color3.fromRGB(255, 255, 255)
+notifTextStroke.Thickness = 1
+notifTextStroke.Parent = notifText
+
+-- Pastel gradient for notification text
+local notifGradient = Instance.new("UIGradient")
+notifGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, PASTEL_GRADIENT_COLORS[1]),
+    ColorSequenceKeypoint.new(1, PASTEL_GRADIENT_COLORS[3])
+})
+notifGradient.Parent = notifText
+
+-- Show and hide notification
+TweenService:Create(notifFrame, TweenInfo.new(0.4), {Position = UDim2.new(1, -260, 1, -80)}):Play()
+task.wait(2)
+TweenService:Create(notifFrame, TweenInfo.new(0.4), {Position = UDim2.new(1, -260, 1, 60)}):Play()
+task.wait(0.5)
+notify:Destroy()
+
+print("✅ Pastel Chéri font with white contours applied!")
