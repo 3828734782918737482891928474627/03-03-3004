@@ -121,7 +121,7 @@ TweenService:Create(
 task.wait(1)
 
 -- === CHERI FONT LOADING ===
-local cheriFontFilename = "cheri.ttf"
+local cheriFontFilename = "cheri.TTF"
 
 if not isfile(cheriFontFilename) then
     warn("⚠️ Cheri font file not found!")
