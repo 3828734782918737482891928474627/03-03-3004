@@ -1,0 +1,11 @@
+# PPSSPP Cheats
+# Game: PangYa Fantasy Golf (ULUS-10457)
+
+_C0 Unlock All Characters & Costumes
+_L 0x805F4348 0x001E0004
+_L 0x10000001 0x00000000
+_L 0x805F434C 0x001E0004
+_L 0x10000001 0x00000000
+
+_C0 Max Money
+_L 0x205F41A0 0x0098967F
