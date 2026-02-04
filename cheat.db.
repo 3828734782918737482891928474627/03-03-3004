@@ -1,0 +1,17 @@
+# PPSSPP Cheat File
+# Game: PangYa Fantasy Golf (ULUS-10457)
+
+_C0 Unlock All Characters
+_L 0x805F4348 0x001E0004
+_L 0x10000001 0x00000000
+
+_C0 Unlock All Kooh Costumes
+_L 0x805F4350 0x000F0002
+_L 0x1000000F 0x00000000
+
+_C0 Max Money (Pang)
+_L 0x205F41A0 0x0098967F
+
+_C0 All Outfits Unlocked
+_L 0x805F434C 0x001E0004
+_L 0x10000001 0x00000000
