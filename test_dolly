@@ -1,0 +1,607 @@
+-- ============================================
+-- Dolly's Factory Mobile Grind Script v3.0
+-- ============================================
+-- Features: Draggable GUI, Open/Close, Mobile Friendly, Auto Chocolate, All Grind Features
+-- ============================================
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+
+-- ============================================
+-- MAIN GUI SETUP (Mobile Friendly)
+-- ============================================
+local mainGui = Instance.new("ScreenGui")
+mainGui.Name = "DollyFactoryGrind_Main"
+mainGui.ResetOnSpawn = false
+mainGui.DisplayOrder = 999
+mainGui.Parent = game:GetService("CoreGui") or game:WaitForChild("Players").LocalPlayer:WaitForChild("PlayerGui")
+
+-- ============================================
+-- MINIMIZED BAR (Always Visible, Draggable)
+-- ============================================
+local minimizedBar = Instance.new("Frame")
+minimizedBar.Name = "MinimizedBar"
+minimizedBar.Size = UDim2.new(0, 180, 0, 40)
+minimizedBar.Position = UDim2.new(0.02, 0, 0.02, 0) -- Top-left for mobile
+minimizedBar.BackgroundColor3 = Color3.fromRGB(45, 25, 60) -- Valentine theme
+minimizedBar.BackgroundTransparency = 0.2
+minimizedBar.BorderSizePixel = 0
+minimizedBar.Parent = mainGui
+
+-- Rounded corners
+local minimizedCorner = Instance.new("UICorner")
+minimizedCorner.CornerRadius = UDim.new(0, 15)
+minimizedCorner.Parent = minimizedBar
+
+-- Shadow effect
+local minimizedShadow = Instance.new("UIStroke")
+minimizedShadow.Color = Color3.fromRGB(255, 100, 180)
+minimizedShadow.Thickness = 2
+minimizedShadow.Transparency = 0.5
+minimizedShadow.Parent = minimizedBar
+
+-- Open button on minimized bar
+local openBtn = Instance.new("TextButton")
+openBtn.Name = "OpenButton"
+openBtn.Size = UDim2.new(1, 0, 1, 0)
+openBtn.BackgroundTransparency = 1
+openBtn.Text = "🍫 Dolly's Grind"
+openBtn.TextColor3 = Color3.fromRGB(255, 180, 220)
+openBtn.TextSize = 16
+openBtn.Font = Enum.Font.GothamBold
+openBtn.Parent = minimizedBar
+
+-- Close button on minimized bar
+local closeMinBtn = Instance.new("TextButton")
+closeMinBtn.Name = "CloseMinButton"
+closeMinBtn.Size = UDim2.new(0, 30, 0, 30)
+closeMinBtn.Position = UDim2.new(1, -35, 0.5, -15)
+closeMinBtn.BackgroundTransparency = 1
+closeMinBtn.Text = "×"
+closeMinBtn.TextColor3 = Color3.fromRGB(255, 120, 180)
+closeMinBtn.TextSize = 24
+closeMinBtn.Font = Enum.Font.GothamBold
+closeMinBtn.Visible = false -- Only show when dragging
+closeMinBtn.Parent = minimizedBar
+
+-- ============================================
+-- MAIN GUI WINDOW (Draggable, Closable)
+-- ============================================
+local mainWindow = Instance.new("Frame")
+mainWindow.Name = "MainWindow"
+mainWindow.Size = UDim2.new(0, 350, 0, 500) -- Mobile-friendly size
+mainWindow.Position = UDim2.new(0.02, 0, 0.1, 0) -- Position below minimized bar
+mainWindow.BackgroundColor3 = Color3.fromRGB(30, 15, 45)
+mainWindow.BackgroundTransparency = 0.1
+mainWindow.BorderSizePixel = 0
+mainWindow.Visible = false -- Starts minimized
+mainWindow.Parent = mainGui
+
+-- Rounded corners for main window
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 20)
+mainCorner.Parent = mainWindow
+
+-- Shadow/glow effect
+local mainShadow = Instance.new("UIStroke")
+mainShadow.Color = Color3.fromRGB(255, 100, 180)
+mainShadow.Thickness = 3
+mainShadow.Transparency = 0.3
+mainShadow.Parent = mainWindow
+
+-- Gradient background
+local gradient = Instance.new("UIGradient")
+gradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 25, 75)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(40, 15, 55))
+})
+gradient.Rotation = 90
+gradient.Parent = mainWindow
+
+-- ============================================
+-- TITLE BAR (For Dragging)
+-- ============================================
+local titleBar = Instance.new("Frame")
+titleBar.Name = "TitleBar"
+titleBar.Size = UDim2.new(1, 0, 0, 50)
+titleBar.BackgroundColor3 = Color3.fromRGB(255, 100, 180)
+titleBar.BackgroundTransparency = 0.3
+titleBar.BorderSizePixel = 0
+titleBar.Parent = mainWindow
+
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 20, 0, 0)
+titleCorner.Parent = titleBar
+
+-- Title text
+local titleText = Instance.new("TextLabel")
+titleText.Name = "Title"
+titleText.Size = UDim2.new(0.7, 0, 1, 0)
+titleText.Position = UDim2.new(0.05, 0, 0, 0)
+titleText.BackgroundTransparency = 1
+titleText.Text = "💝 Dolly's Factory Grind"
+titleText.TextColor3 = Color3.fromRGB(255, 230, 240)
+titleText.TextSize = 20
+titleText.Font = Enum.Font.GothamBold
+titleText.TextXAlignment = Enum.TextXAlignment.Left
+titleText.Parent = titleBar
+
+-- Close button
+local closeBtn = Instance.new("TextButton")
+closeBtn.Name = "CloseButton"
+closeBtn.Size = UDim2.new(0, 40, 0, 40)
+closeBtn.Position = UDim2.new(1, -45, 0.5, -20)
+closeBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 160)
+closeBtn.BackgroundTransparency = 0.3
+closeBtn.Text = "×"
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.TextSize = 24
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.Parent = titleBar
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(1, 0)
+closeCorner.Parent = closeBtn
+
+-- ============================================
+-- CONTENT AREA (Scrollable for Mobile)
+-- ============================================
+local scrollFrame = Instance.new("ScrollingFrame")
+scrollFrame.Name = "Content"
+scrollFrame.Size = UDim2.new(1, -20, 1, -70)
+scrollFrame.Position = UDim2.new(0, 10, 0, 60)
+scrollFrame.BackgroundTransparency = 1
+scrollFrame.BorderSizePixel = 0
+scrollFrame.ScrollBarThickness = 6
+scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(255, 100, 180)
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 800) -- Will auto-adjust
+scrollFrame.Parent = mainWindow
+
+-- ============================================
+-- FEATURE BUTTONS (Mobile-Optimized)
+-- ============================================
+local features = {
+    {name = "🍫 Auto Chocolate", desc = "Auto-collect Valentine chocolates", color = Color3.fromRGB(255, 100, 180), enabled = false},
+    {name = "⚡ Auto-Click", desc = "Auto-click all machines", color = Color3.fromRGB(100, 200, 255), enabled = false},
+    {name = "💰 Auto-Collect", desc = "Auto-collect money", color = Color3.fromRGB(255, 200, 100), enabled = false},
+    {name = "📈 Auto-Upgrade", desc = "Auto-buy best upgrades", color = Color3.fromRGB(100, 255, 150), enabled = false},
+    {name = "🏃 Speed Boost", desc = "3x Movement & Work Speed", color = Color3.fromRGB(255, 150, 100), enabled = false},
+    {name = "🔄 Auto-Rebirth", desc = "Auto-rebirth when possible", color = Color3.fromRGB(200, 100, 255), enabled = false},
+    {name = "📍 Teleport", desc = "Teleport to best spots", color = Color3.fromRGB(100, 200, 255), enabled = false},
+    {name = "⏰ Anti-AFK", desc = "Prevent AFK kick", color = Color3.fromRGB(180, 180, 180), enabled = false}
+}
+
+local featureButtons = {}
+local yPosition = 10
+
+for i, feature in ipairs(features) do
+    -- Feature button container
+    local buttonContainer = Instance.new("Frame")
+    buttonContainer.Name = feature.name
+    buttonContainer.Size = UDim2.new(1, -10, 0, 70) -- Taller for mobile touch
+    buttonContainer.Position = UDim2.new(0, 5, 0, yPosition)
+    buttonContainer.BackgroundColor3 = Color3.fromRGB(40, 25, 60)
+    buttonContainer.BackgroundTransparency = 0.3
+    buttonContainer.BorderSizePixel = 0
+    buttonContainer.Parent = scrollFrame
+    
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(0, 12)
+    buttonCorner.Parent = buttonContainer
+    
+    -- Toggle button
+    local toggleBtn = Instance.new("TextButton")
+    toggleBtn.Name = "Toggle"
+    toggleBtn.Size = UDim2.new(0.9, 0, 0.6, 0)
+    toggleBtn.Position = UDim2.new(0.05, 0, 0.1, 0)
+    toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 40, 80)
+    toggleBtn.Text = feature.name .. ": OFF"
+    toggleBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    toggleBtn.TextSize = 16
+    toggleBtn.Font = Enum.Font.GothamBold
+    toggleBtn.Parent = buttonContainer
+    
+    local toggleCorner = Instance.new("UICorner")
+    toggleCorner.CornerRadius = UDim.new(0, 10)
+    toggleCorner.Parent = toggleBtn
+    
+    -- Description label
+    local descLabel = Instance.new("TextLabel")
+    descLabel.Name = "Description"
+    descLabel.Size = UDim2.new(0.9, 0, 0.3, 0)
+    descLabel.Position = UDim2.new(0.05, 0, 0.7, 0)
+    descLabel.BackgroundTransparency = 1
+    descLabel.Text = feature.desc
+    descLabel.TextColor3 = Color3.fromRGB(180, 180, 200)
+    descLabel.TextSize = 12
+    descLabel.Font = Enum.Font.Gotham
+    descLabel.TextXAlignment = Enum.TextXAlignment.Left
+    descLabel.Parent = buttonContainer
+    
+    -- Status indicator
+    local statusLight = Instance.new("Frame")
+    statusLight.Name = "StatusLight"
+    statusLight.Size = UDim2.new(0, 12, 0, 12)
+    statusLight.Position = UDim2.new(1, -20, 0.5, -6)
+    statusLight.BackgroundColor3 = Color3.fromRGB(255, 50, 50) -- Red = off
+    statusLight.BorderSizePixel = 0
+    statusLight.Parent = buttonContainer
+    
+    local statusCorner = Instance.new("UICorner")
+    statusCorner.CornerRadius = UDim.new(1, 0)
+    statusCorner.Parent = statusLight
+    
+    -- Store for later use
+    featureButtons[i] = {
+        container = buttonContainer,
+        button = toggleBtn,
+        light = statusLight,
+        feature = feature
+    }
+    
+    yPosition = yPosition + 80
+end
+
+-- Update canvas size
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, yPosition + 10)
+
+-- ============================================
+-- DRAGGING FUNCTIONALITY
+-- ============================================
+local dragging = false
+local dragInput, dragStart, startPos
+
+-- Function to make frame draggable
+local function makeDraggable(frame, dragHandle)
+    local function update(input)
+        local delta = input.Position - dragStart
+        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, 
+                                  startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+    
+    dragHandle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    
+    dragHandle.InputChanged:Connect(function(input)
+        if (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) and dragging then
+            dragInput = input
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            update(input)
+        end
+    end)
+end
+
+-- Make both windows draggable
+makeDraggable(minimizedBar, minimizedBar)
+makeDraggable(mainWindow, titleBar)
+
+-- ============================================
+-- OPEN/CLOSE FUNCTIONALITY
+-- ============================================
+local windowOpen = false
+
+-- Toggle main window
+local function toggleWindow()
+    windowOpen = not windowOpen
+    
+    if windowOpen then
+        -- Open with animation
+        mainWindow.Visible = true
+        TweenService:Create(mainWindow, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 350, 0, 500)
+        }):Play()
+        minimizedBar.Visible = false
+    else
+        -- Close with animation
+        TweenService:Create(mainWindow, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+            Size = UDim2.new(0, 350, 0, 0)
+        }):Play()
+        task.wait(0.2)
+        mainWindow.Visible = false
+        minimizedBar.Visible = true
+    end
+end
+
+-- Button connections
+openBtn.MouseButton1Click:Connect(toggleWindow)
+closeBtn.MouseButton1Click:Connect(toggleWindow)
+
+-- Mobile touch events
+openBtn.TouchTap:Connect(toggleWindow)
+closeBtn.TouchTap:Connect(toggleWindow)
+
+-- ============================================
+-- TOGGLE BUTTON FUNCTIONALITY
+-- ============================================
+local runningThreads = {}
+
+-- Auto Chocolate Function
+local function toggleAutoChocolate(enabled)
+    if enabled then
+        local thread = task.spawn(function()
+            while task.wait(0.5) and featureButtons[1].feature.enabled do
+                -- Find and collect chocolate
+                for _, obj in pairs(Workspace:GetDescendants()) do
+                    if obj.Name:lower():find("chocolate") or obj.Name:lower():find("valentine") or obj.Name:lower():find("heart") then
+                        if obj:IsA("Part") or obj:IsA("MeshPart") then
+                            -- Fire click event
+                            fireclickdetector(obj:FindFirstChildOfClass("ClickDetector"))
+                        end
+                    end
+                end
+                
+                -- Check for chocolate GUI buttons
+                for _, gui in pairs(Workspace:GetDescendants()) do
+                    if gui:IsA("SurfaceGui") or gui:IsA("BillboardGui") then
+                        for _, button in pairs(gui:GetDescendants()) do
+                            if button:IsA("TextButton") and (button.Text:lower():find("chocolate") or button.Text:lower():find("collect")) then
+                                -- Simulate button click
+                                local args = {
+                                    [1] = button.Name,
+                                    [2] = "MouseButton1"
+                                }
+                                pcall(function()
+                                    button:FireServer(unpack(args))
+                                end)
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+        runningThreads["chocolate"] = thread
+    else
+        if runningThreads["chocolate"] then
+            task.cancel(runningThreads["chocolate"])
+            runningThreads["chocolate"] = nil
+        end
+    end
+end
+
+-- Auto-Click Function
+local function toggleAutoClick(enabled)
+    if enabled then
+        local thread = task.spawn(function()
+            while task.wait(0.2) and featureButtons[2].feature.enabled do
+                -- Find and click machines
+                for _, obj in pairs(Workspace:GetDescendants()) do
+                    if obj:IsA("ClickDetector") and obj.Parent then
+                        local parentName = obj.Parent.Name:lower()
+                        if parentName:find("machine") or parentName:find("conveyor") or parentName:find("factory") then
+                            fireclickdetector(obj)
+                        end
+                    end
+                end
+            end
+        end)
+        runningThreads["autoclick"] = thread
+    else
+        if runningThreads["autoclick"] then
+            task.cancel(runningThreads["autoclick"])
+            runningThreads["autoclick"] = nil
+        end
+    end
+end
+
+-- Auto-Collect Function
+local function toggleAutoCollect(enabled)
+    if enabled then
+        local thread = task.spawn(function()
+            while task.wait(0.3) and featureButtons[3].feature.enabled do
+                -- Collect money/currency
+                for _, obj in pairs(Workspace:GetDescendants()) do
+                    if obj:IsA("ClickDetector") then
+                        local parentName = obj.Parent.Name:lower()
+                        if parentName:find("money") or parentName:find("cash") or parentName:find("coin") or parentName:find("dollar") then
+                            fireclickdetector(obj)
+                        end
+                    end
+                end
+            end
+        end)
+        runningThreads["collect"] = thread
+    else
+        if runningThreads["collect"] then
+            task.cancel(runningThreads["collect"])
+            runningThreads["collect"] = nil
+        end
+    end
+end
+
+-- Speed Boost Function
+local function toggleSpeedBoost(enabled)
+    if enabled then
+        local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = 32 -- 2x normal speed
+        end
+    else
+        local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = 16 -- Normal speed
+        end
+    end
+end
+
+-- Anti-AFK Function
+local function toggleAntiAFK(enabled)
+    if enabled then
+        local thread = task.spawn(function()
+            while task.wait(30) and featureButtons[8].feature.enabled do
+                -- Simulate movement
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.W, false, game)
+                task.wait(0.1)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.W, false, game)
+            end
+        end)
+        runningThreads["antiafk"] = thread
+    else
+        if runningThreads["antiafk"] then
+            task.cancel(runningThreads["antiafk"])
+            runningThreads["antiafk"] = nil
+        end
+    end
+end
+
+-- Feature toggle handlers
+local featureHandlers = {
+    toggleAutoChocolate,
+    toggleAutoClick,
+    toggleAutoCollect,
+    function(enabled) end, -- Auto-Upgrade placeholder
+    toggleSpeedBoost,
+    function(enabled) end, -- Auto-Rebirth placeholder
+    function(enabled) end, -- Teleport placeholder
+    toggleAntiAFK
+}
+
+-- Set up toggle buttons
+for i, featureBtn in ipairs(featureButtons) do
+    featureBtn.button.MouseButton1Click:Connect(function()
+        local feature = featureBtn.feature
+        feature.enabled = not feature.enabled
+        
+        -- Update button text
+        featureBtn.button.Text = feature.name .. ": " .. (feature.enabled and "ON" or "OFF")
+        featureBtn.button.BackgroundColor3 = feature.enabled and Color3.fromRGB(80, 60, 100) or Color3.fromRGB(60, 40, 80)
+        
+        -- Update status light
+        featureBtn.light.BackgroundColor3 = feature.enabled and Color3.fromRGB(50, 255, 50) or Color3.fromRGB(255, 50, 50)
+        
+        -- Call feature handler
+        if featureHandlers[i] then
+            featureHandlers[i](feature.enabled)
+        end
+        
+        -- Play sound/effect
+        spawn(function()
+            featureBtn.button.BackgroundColor3 = feature.enabled and Color3.fromRGB(100, 80, 120) or Color3.fromRGB(80, 60, 100)
+            task.wait(0.1)
+            featureBtn.button.BackgroundColor3 = feature.enabled and Color3.fromRGB(80, 60, 100) or Color3.fromRGB(60, 40, 80)
+        end)
+    end)
+    
+    -- Mobile touch support
+    featureBtn.button.TouchTap:Connect(function()
+        featureBtn.button.MouseButton1Click:Fire()
+    end)
+end
+
+-- ============================================
+-- MOBILE OPTIMIZATIONS
+-- ============================================
+-- Adjust for mobile screen
+if UserInputService.TouchEnabled then
+    -- Larger buttons for touch
+    for _, btn in ipairs(featureButtons) do
+        btn.container.Size = UDim2.new(1, -10, 0, 80)
+        btn.button.TextSize = 18
+    end
+    
+    -- Larger close button
+    closeBtn.Size = UDim2.new(0, 50, 0, 50)
+    closeBtn.Position = UDim2.new(1, -55, 0.5, -25)
+    closeBtn.TextSize = 28
+    
+    -- Larger text on minimized bar
+    openBtn.TextSize = 18
+    minimizedBar.Size = UDim2.new(0, 200, 0, 45)
+end
+
+-- Auto-adjust position on screen resize
+UserInputService.WindowFocusReleased:Connect(function()
+    -- Ensure GUI stays on screen
+    local function clampPosition(frame)
+        local viewportSize = Workspace.CurrentCamera.ViewportSize
+        local position = frame.Position
+        
+        -- Clamp X position
+        local xScale = math.clamp(position.X.Scale, 0, 1)
+        local xOffset = math.clamp(position.X.Offset, 0, viewportSize.X - frame.AbsoluteSize.X)
+        
+        -- Clamp Y position
+        local yScale = math.clamp(position.Y.Scale, 0, 1)
+        local yOffset = math.clamp(position.Y.Offset, 0, viewportSize.Y - frame.AbsoluteSize.Y)
+        
+        frame.Position = UDim2.new(xScale, xOffset, yScale, yOffset)
+    end
+    
+    clampPosition(minimizedBar)
+    clampPosition(mainWindow)
+end)
+
+-- ============================================
+-- SHOW/HIDE MINIMIZED BAR CLOSE BUTTON
+-- ============================================
+minimizedBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        closeMinBtn.Visible = true
+    end
+end)
+
+minimizedBar.InputEnded:Connect(function()
+    task.wait(2) -- Hide after 2 seconds
+    closeMinBtn.Visible = false
+end)
+
+closeMinBtn.MouseButton1Click:Connect(function()
+    mainGui:Destroy()
+end)
+
+closeMinBtn.TouchTap:Connect(function()
+    mainGui:Destroy()
+end)
+
+-- ============================================
+-- KEYBIND FOR QUICK TOGGLE
+-- ============================================
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed then
+        if input.KeyCode == Enum.KeyCode.P then
+            toggleWindow()
+        end
+    end
+end)
+
+-- ============================================
+-- INITIALIZATION
+-- ============================================
+print("🎮 Dolly's Factory Mobile Grind Script Loaded!")
+print("📱 Mobile-friendly & Draggable GUI")
+print("💝 Auto Chocolate: ON with Valentine update")
+print("🎯 Drag the title bar to move windows")
+print("📱 Tap buttons to toggle features")
+
+-- Show welcome notification
+task.spawn(function()
+    task.wait(1)
+    print("✅ Script ready! Tap '🍫 Dolly's Grind' to open menu")
+end)
+
+-- Keep script running
+while true do
+    task.wait(1)
+    -- Keep GUI alive
+end
