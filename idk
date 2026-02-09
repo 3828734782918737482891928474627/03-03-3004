@@ -1,0 +1,83 @@
+-- ============================================
+-- API FINDER SCRIPT for Roblox Games
+-- ============================================
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+
+print("🔍 ========= API FINDER START =========")
+
+-- Function to scan for important RemoteEvents/Functions
+local function scanForAPI(parent, depth, path)
+    if depth > 3 then return end -- Limit recursion depth
+    
+    for _, child in pairs(parent:GetChildren()) do
+        local currentPath = path .. "." .. child.Name
+        
+        if child:IsA("RemoteEvent") then
+            print("📡 REMOTEEVENT: " .. currentPath)
+            print("   📍 Path: " .. currentPath)
+            
+            -- Try to connect to see what arguments it uses
+            local success, err = pcall(function()
+                child.OnClientEvent:Connect(function(...)
+                    print("   🔥 Event Fired! Args: " .. tostring({...}))
+                end)
+            end)
+            
+        elseif child:IsA("RemoteFunction") then
+            print("🔄 REMOTEFUNCTION: " .. currentPath)
+            print("   📍 Path: " .. currentPath)
+            
+        elseif child:IsA("BindableEvent") then
+            print("🔗 BINDABLEEVENT: " .. currentPath)
+            
+        elseif child:IsA("ModuleScript") then
+            -- Check if it's likely an API module
+            local name = child.Name:lower()
+            if name:find("api") or name:find("service") or name:find("handler") or 
+               name:find("manager") or name:find("controller") then
+                print("📦 MODULE (API): " .. currentPath)
+                
+                -- Try to see what's inside
+                local success, module = pcall(function()
+                    return require(child)
+                end)
+                
+                if success and type(module) == "table" then
+                    for key, value in pairs(module) do
+                        if type(value) == "function" then
+                            print("   ⚡ Function: " .. key)
+                        end
+                    end
+                end
+            end
+        end
+        
+        -- Recursively scan
+        if #child:GetChildren() > 0 then
+            scanForAPI(child, depth + 1, currentPath)
+        end
+    end
+end
+
+-- Scan key locations
+print("\n🎯 SCANNING REPLICATEDSTORAGE...")
+scanForAPI(ReplicatedStorage, 0, "ReplicatedStorage")
+
+print("\n🎯 SCANNING WORKSPACE...")
+-- Only scan top-level workspace for important folders
+for _, child in pairs(Workspace:GetChildren()) do
+    if child:IsA("Folder") and (child.Name:find("Events") or child.Name:find("Remotes") or 
+       child.Name:find("API") or child.Name:find("Systems")) then
+        scanForAPI(child, 0, "Workspace." .. child.Name)
+    end
+end
+
+print("\n🎯 SCANNING PLAYER SCRIPTS...")
+if player:FindFirstChild("PlayerScripts") then
+    scanForAPI(player.PlayerScripts, 0, "PlayerScripts")
+end
+
+print("\n🔍 ========= API FINDER END ===========")
