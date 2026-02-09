@@ -1,0 +1,130 @@
+-- Mobile-friendly API Finder
+local gui = Instance.new("ScreenGui")
+gui.Name = "MobileAPIFinder"
+gui.ResetOnSpawn = false
+gui.Parent = game:GetService("CoreGui")
+
+-- Main window with larger buttons for mobile
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0.9, 0, 0.8, 0) -- 90% of screen for mobile
+frame.Position = UDim2.new(0.05, 0, 0.1, 0)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+frame.BorderSizePixel = 0
+frame.Parent = gui
+
+-- Rounded corners for mobile
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 20)
+corner.Parent = frame
+
+-- Title with large text
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 60)
+title.BackgroundTransparency = 1
+title.Text = "📱 API FINDER"
+title.TextColor3 = Color3.fromRGB(255, 150, 200)
+title.TextSize = 28 -- Large for mobile
+title.Font = Enum.Font.GothamBold
+title.Parent = frame
+
+-- Scroll frame for results
+local scroll = Instance.new("ScrollingFrame")
+scroll.Size = UDim2.new(1, -20, 1, -80)
+scroll.Position = UDim2.new(0, 10, 0, 70)
+scroll.BackgroundTransparency = 1
+scroll.ScrollBarThickness = 8 -- Thicker for mobile
+scroll.Parent = frame
+
+-- Search button (large for mobile)
+local searchBtn = Instance.new("TextButton")
+searchBtn.Size = UDim2.new(0.8, 0, 0, 70)
+searchBtn.Position = UDim2.new(0.1, 0, 0, 80)
+searchBtn.BackgroundColor3 = Color3.fromRGB(80, 60, 120)
+searchBtn.Text = "🔍 FIND ALL APIS"
+searchBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+searchBtn.TextSize = 22
+searchBtn.Font = Enum.Font.GothamBold
+searchBtn.Parent = scroll
+
+local searchCorner = Instance.new("UICorner")
+searchCorner.CornerRadius = UDim.new(0, 15)
+searchCorner.Parent = searchBtn
+
+-- Results container
+local yPosition = 80
+local results = {}
+
+searchBtn.MouseButton1Click:Connect(function()
+    -- Clear previous results
+    for _, v in pairs(results) do
+        v:Destroy()
+    end
+    results = {}
+    yPosition = 80
+    
+    -- Find all RemoteEvents
+    for _, v in pairs(game:GetDescendants()) do
+        if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(1, -10, 0, 80) -- Tall for mobile
+            btn.Position = UDim2.new(0, 5, 0, yPosition)
+            btn.BackgroundColor3 = v:IsA("RemoteEvent") and Color3.fromRGB(60, 40, 90) or Color3.fromRGB(40, 60, 90)
+            btn.Text = v.ClassName .. "\n" .. v.Name
+            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            btn.TextSize = 18
+            btn.TextWrapped = true
+            btn.Font = Enum.Font.Gotham
+            btn.Parent = scroll
+            
+            local btnCorner = Instance.new("UICorner")
+            btnCorner.CornerRadius = UDim.new(0, 12)
+            btnCorner.Parent = btn
+            
+            -- Copy on tap
+            btn.MouseButton1Click:Connect(function()
+                setclipboard(v:GetFullName())
+                btn.Text = "📋 COPIED!\n" .. v.Name
+                task.wait(1)
+                btn.Text = v.ClassName .. "\n" .. v.Name
+            end)
+            
+            table.insert(results, btn)
+            yPosition = yPosition + 90
+        end
+    end
+    
+    scroll.CanvasSize = UDim2.new(0, 0, 0, yPosition)
+end)
+
+-- Mobile touch support
+searchBtn.TouchTap:Connect(function()
+    searchBtn.MouseButton1Click:Fire()
+end)
+
+-- Draggable for mobile
+local dragging = false
+local dragStart, startPos
+
+frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = frame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.Touch then
+        local delta = input.Position - dragStart
+        frame.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+    end
+end)
