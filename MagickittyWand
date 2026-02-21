@@ -1,0 +1,10 @@
+RenameRef:Magical Girl Wand:KittyWand
+AssetBundle. CreateFromFile:PoseMod/magicalkitty.unity3d
+AssetBundle. LoadAsync:MagicalKitty
+AssetBundle. Unload
+NewAsset:Kitty
+Attach:Kitty: KittyWand
+RefLocalPosition:Kitty:0:-0.01:-0.01
+RefLocalRotation3:Kitty:-90:180:0
+Destroy:KittyWand/PrincessRod
+ChangeWeaponName:Magical Girl Wand:Hello Kitty Wand
