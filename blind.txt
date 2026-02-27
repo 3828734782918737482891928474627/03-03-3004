@@ -1,0 +1,2 @@
+<StudentManagerScript>:StudentManager:Call:BlindEveryone
+<StudentScript>:Student_10 (Raibaru Fumetsu):Set:Blind:bool:true
