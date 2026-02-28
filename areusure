@@ -1,0 +1,1134 @@
+-- blueprint.lua on discord (DIAGNOSTIC FIXED VERSION)
+
+local Players = game:GetService('Players')
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local RunService = game:GetService('RunService')
+local UserInputService = game:GetService('UserInputService')
+local TweenService = game:GetService('TweenService')
+local HttpService = game:GetService('HttpService')
+
+pcall(function()
+    setthreadidentity(2)
+end)
+
+local LocalPlayer = Players.LocalPlayer
+local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+local Fsys = require(ReplicatedStorage:WaitForChild("Fsys"))
+local LoadModule = Fsys.load
+
+local ClientData = LoadModule("ClientData")
+local RouterClient = LoadModule("RouterClient")
+local UIManager = LoadModule("UIManager")
+local InventoryDB = LoadModule("InventoryDB")
+local KindDB = LoadModule("KindDB")
+local DownloadClient = LoadModule("DownloadClient")
+local AnimationManager = LoadModule("AnimationManager")
+local PetRigs = LoadModule("new:PetRigs")
+local AilmentsClient = LoadModule("new:AilmentsClient")
+local AilmentsDB = LoadModule("new:AilmentsDB")
+local CharWrapperClient = LoadModule("CharWrapperClient")
+
+_G.InventoryDB = InventoryDB
+
+-- DIAGNOSTIC: Print what's in InventoryDB
+print("🔍 DIAGNOSTIC: Checking InventoryDB...")
+print("InventoryDB.pets type:", type(InventoryDB.pets))
+if InventoryDB.pets then
+    local count = 0
+    for id, info in pairs(InventoryDB.pets) do
+        count = count + 1
+        if count <= 5 then -- Show first 5 as example
+            print("  Pet ID:", id, "Name:", info and info.name or "UNKNOWN")
+        end
+    end
+    print("Total pets in DB:", count)
+else
+    warn("InventoryDB.pets is nil!")
+end
+
+local HighTierPets = {
+    "Shadow Dragon", "Bat Dragon", "Frost Dragon", "Giraffe", "Owl", "Parrot", "Crow",
+    "Evil Unicorn", "Arctic Reindeer", "Hedgehog", "Dalmatian", "Turtle", "Kangaroo",
+    "Lion", "Elephant", "Blazing Lion", "African Wild Dog", "Flamingo", "Diamond Butterfly",
+    "Mini Pig", "Caterpillar", "Albino Monkey", "Candyfloss Chick", "Pelican", "Blue Dog",
+    "Pink Cat", "Haetae", "Peppermint Penguin", "Winged Tiger", "Sugar Glider",
+    "Shark Puppy", "Goat", "Sheeeeep", "Lion Cub", "Nessie", "Frostbite Bear",
+    "Balloon Unicorn", "Honey Badger", "Hot Doggo", "Crocodile", "Hare", "Ram", "Yeti",
+    "Meerkat", "Jellyfish", "Happy Clown", "Orchid Butterfly", "Many Mackerel",
+    "Strawberry Shortcake Bat Dragon", "Zombie Buffalo", "Fairy Bat Dragon",
+    "Chocolate Chip Bat Dragon", "Cow", "Dragonfruit Fox", "Monkey King", "Cryptid",
+    "Undead Jousting Horse", "Mermicorn", "Frost Unicorn", "Irish Water Spaniel",
+    "Jekyll Hydra", "Papa Moose", "Strawberry Penguin", "Bush Elephant", "Cupid Dragon",
+    "Black-Chested Pheasant", "Alpaca", "Field Mouse", "Pineapple Owl", "Owlbear",
+    "Tio De Nadal", "Pig", "Royal Mistletroll", "Pirate Ghost Capuchin Monkey",
+    "Moose Calf", "Vampire Dragon", "Shrew", "Mechapup", "Bald Eagle",
+    "Ring-Tailed Lemur", "Tortuga De La Isla", "Werewolf", "Puffin", "Fallow Deer",
+    "Caelum Cervi", "Diamond Amazon", "Sea Slug", "Sugar Axolotl", "Purple Butterfly",
+    "Grim Dragon", "Brown Bear", "Polar Bear", "Sakura Spirit", "Platypus", "Groundhog",
+    "Lava Dragon", "Glacier Moth", "Emperor Gorilla", "2D Kitty", "Hyena",
+    "Arctic Dusk Dragon", "Alley Cat", "Siamese Cat", "Phantom Dragon",
+    "Christmas Pudding Pup", "Glacier Kitsune", "Giant Gold Scarab", "Diamond Albatross"
+}
+
+local SpawnedPets = {}
+local PetModelCache = {}
+local EquippedPet = nil
+local CurrentRideId = nil
+local RideAnimationTrack = nil
+local PetAilmentsCache = {}
+local SpawnedItems = {}
+
+local function GenerateUniquePetName()
+    local prefixes = {"★", "☆", "♡", "☁️", "✨", "🍓", "🌸", "🍯", "☕", "🌙", "🌈", "❄️", "🫧", "🍬", "🍪", "🥛"}
+    local names = {"Shadow", "Blaze", "Frost", "Thunder", "Moon", "Star", "Sky", "Ocean", "River", "Storm", 
+                   "Ember", "Ash", "Dusk", "Dawn", "Night", "Day", "Sun", "Wind", "Rain", "Snow", "Ice", "Fire",
+                   "Nova", "Cosmo", "Galaxy", "Orbit", "Comet", "Meteor", "Aurora", "Nebula", "Crystal", "Gem",
+                   "Ruby", "Sapphire", "Emerald", "Diamond", "Gold", "Silver", "Mystic", "Magic", "Enchant"}
+    
+    local usePrefix = math.random(1, 3) == 1
+    local name = names[math.random(1, #names)]
+    
+    if usePrefix then
+        return prefixes[math.random(1, #prefixes)] .. name
+    else
+        return name .. " " .. prefixes[math.random(1, #prefixes)]
+    end
+end
+
+local NewnessGroups = {
+    mega_neon_flyable_rideable = 990000,
+    mega_neon_flyable = 980000,
+    mega_neon_rideable = 970000,
+    mega_neon = 960000,
+    neon_flyable_rideable = 950000,
+    neon_flyable = 940000,
+    neon_rideable = 930000,
+    neon = 920000,
+    flyable_rideable = 910000,
+    flyable = 900000,
+    rideable = 890000,
+    regular = 880000
+}
+
+local function GetPropertyGroup(properties)
+    local isMega = properties.mega_neon or false
+    local isNeon = properties.neon or false
+    local canFly = properties.flyable or false
+    local canRide = properties.rideable or false
+
+    if isMega then
+        if canFly and canRide then return "mega_neon_flyable_rideable"
+        elseif canFly then return "mega_neon_flyable"
+        elseif canRide then return "mega_neon_rideable"
+        else return "mega_neon" end
+    elseif isNeon then
+        if canFly and canRide then return "neon_flyable_rideable"
+        elseif canFly then return "neon_flyable"
+        elseif canRide then return "neon_rideable"
+        else return "neon" end
+    else
+        if canFly and canRide then return "flyable_rideable"
+        elseif canFly then return "flyable"
+        elseif canRide then return "rideable"
+        else return "regular" end
+    end
+end
+
+local function UpdateClientData(dataPath, modifier)
+    local identity = get_thread_identity and get_thread_identity() or 8
+    set_thread_identity(2)
+    local currentData = ClientData.get(dataPath)
+    local clonedData = table.clone(currentData)
+    local result = modifier(clonedData)
+    ClientData.predict(dataPath, result)
+    set_thread_identity(identity)
+    return result
+end
+
+local function GenerateUniqueID()
+    return HttpService:GenerateGUID(false)
+end
+
+local function FindInTable(array, checker)
+    for index, value in pairs(array) do
+        if checker(value, index) then
+            return index
+        end
+    end
+    return nil
+end
+
+local originalGetServer = ClientData.get_server
+
+function ClientData.get_server(player, key, ...)
+    local data = originalGetServer(player, key, ...)
+
+    if key == "ailments_manager" and player == LocalPlayer then
+        local ailmentsData = {}
+        if data then
+            for k, v in pairs(data) do
+                ailmentsData[k] = type(v) == "table" and table.clone(v) or v
+            end
+        end
+        
+        ailmentsData.ailments = ailmentsData.ailments or {}
+        
+        for petId, _ in pairs(SpawnedPets) do
+            if PetAilmentsCache[petId] then
+                ailmentsData.ailments[petId] = PetAilmentsCache[petId]
+            else
+                local ailmentTypes = {}
+                for kind, _ in pairs(AilmentsDB) do
+                    if kind ~= "at_work" and kind ~= "mystery" and kind ~= "walking" then
+                        table.insert(ailmentTypes, kind)
+                    end
+                end
+
+                local ailmentCount = math.random(2, 4)
+                local petAilments = {}
+                local usedTypes = {}
+
+                for i = 1, math.min(ailmentCount, #ailmentTypes) do
+                    local ailmentKind
+                    repeat
+                        ailmentKind = ailmentTypes[math.random(1, #ailmentTypes)]
+                    until not usedTypes[ailmentKind]
+                    usedTypes[ailmentKind] = true
+
+                    local ailmentId = GenerateUniqueID()
+                    petAilments[ailmentId] = {
+                        components = {},
+                        created_timestamp = os.time(),
+                        kind = ailmentKind,
+                        progress = 0,
+                        rate = 0,
+                        rate_timestamp = os.time(),
+                        sort_order = i * 100
+                    }
+                end
+
+                PetAilmentsCache[petId] = petAilments
+                ailmentsData.ailments[petId] = petAilments
+            end
+        end
+
+        return ailmentsData
+    end
+
+    return data
+end
+
+local function FetchPetModel(petKind)
+    if PetModelCache[petKind] then
+        return PetModelCache[petKind]
+    end
+    local model = DownloadClient.promise_download_copy("Pets", petKind):expect()
+    PetModelCache[petKind] = model
+    return model
+end
+
+local function ApplyNeonVisuals(petModel, petData)
+    local modelInstance = petModel:FindFirstChild("PetModel")
+    if modelInstance and (petData.properties.neon or petData.properties.mega_neon) then
+        local petKindData = KindDB[petData.id]
+        for partName, partProps in pairs(petKindData.neon_parts) do
+            local geoPart = PetRigs.get(modelInstance).get_geo_part(modelInstance, partName)
+            if geoPart then
+                geoPart.Material = partProps.Material
+                geoPart.Color = partProps.Color
+            end
+        end
+    end
+end
+
+local function RegisterPetWrapper(wrapperData)
+    UpdateClientData("pet_char_wrappers", function(wrappers)
+        wrapperData.unique = #wrappers + 1
+        wrapperData.index = #wrappers + 1
+        wrappers[#wrappers + 1] = wrapperData
+        return wrappers
+    end)
+end
+
+local function RegisterPetState(stateManager)
+    UpdateClientData("pet_state_managers", function(managers)
+        managers[#managers + 1] = stateManager
+        return managers
+    end)
+end
+
+local function RemovePetWrapper(petUniqueId)
+    UpdateClientData("pet_char_wrappers", function(wrappers)
+        local wrapperIndex = FindInTable(wrappers, function(w)
+            return w.pet_unique == petUniqueId
+        end)
+        if wrapperIndex then
+            table.remove(wrappers, wrapperIndex)
+            for i = wrapperIndex, #wrappers do
+                wrappers[i].unique = i
+                wrappers[i].index = i
+            end
+        end
+        return wrappers
+    end)
+end
+
+local function RemovePetState(petUniqueId)
+    local pet = SpawnedPets[petUniqueId]
+    if not pet or not pet.model then return end
+
+    UpdateClientData("pet_state_managers", function(managers)
+        local managerIndex = FindInTable(managers, function(m)
+            return m.char == pet.model
+        end)
+        if managerIndex then
+            table.remove(managers, managerIndex)
+        end
+        return managers
+    end)
+end
+
+local function ClearPetStates(petUniqueId)
+    local pet = SpawnedPets[petUniqueId]
+    if not pet or not pet.model then return end
+
+    UpdateClientData("pet_state_managers", function(managers)
+        local managerIndex = FindInTable(managers, function(m)
+            return m.char == pet.model
+        end)
+        if managerIndex then
+            local updated = table.clone(managers)
+            updated[managerIndex] = table.clone(updated[managerIndex])
+            updated[managerIndex].states = {}
+            return updated
+        end
+        return managers
+    end)
+end
+
+local function SetPetState(petUniqueId, stateId)
+    local pet = SpawnedPets[petUniqueId]
+    if not pet or not pet.model then return end
+
+    UpdateClientData("pet_state_managers", function(managers)
+        local managerIndex = FindInTable(managers, function(m)
+            return m.char == pet.model
+        end)
+        if managerIndex then
+            local updated = table.clone(managers)
+            updated[managerIndex] = table.clone(updated[managerIndex])
+            updated[managerIndex].states = {{ id = stateId }}
+            return updated
+        end
+        return managers
+    end)
+end
+
+local function ClearPlayerStates()
+    UpdateClientData("state_manager", function(stateManager)
+        local updated = table.clone(stateManager)
+        updated.states = {}
+        updated.is_sitting = false
+        return updated
+    end)
+end
+
+local function SetPlayerState(stateId)
+    UpdateClientData("state_manager", function(stateManager)
+        local updated = table.clone(stateManager)
+        updated.states = {{ id = stateId }}
+        updated.is_sitting = true
+        return updated
+    end)
+end
+
+local function AttachRideConstraint(petModel)
+    local character = LocalPlayer.Character
+    if not character or not character.PrimaryPart then return false end
+
+    local ridePos = petModel:FindFirstChild("RidePosition", true)
+    if not ridePos then return false end
+
+    local sourceAttach = Instance.new("Attachment")
+    sourceAttach.Parent = ridePos
+    sourceAttach.Position = Vector3.new(0, 1.237, 0)
+    sourceAttach.Name = "SourceAttachment"
+
+    local rigidConstraint = Instance.new("RigidConstraint")
+    rigidConstraint.Name = "StateConnection"
+    rigidConstraint.Attachment0 = sourceAttach
+    rigidConstraint.Attachment1 = character.PrimaryPart.RootAttachment
+    rigidConstraint.Parent = character
+
+    return true
+end
+
+local function DismountPet()
+    if not CurrentRideId then return end
+
+    local pet = SpawnedPets[CurrentRideId]
+    if pet and pet.model then
+        if RideAnimationTrack then
+            RideAnimationTrack:Stop()
+            RideAnimationTrack:Destroy()
+            RideAnimationTrack = nil
+        end
+
+        local sourceAttach = pet.model:FindFirstChild("SourceAttachment", true)
+        if sourceAttach then sourceAttach:Destroy() end
+
+        local character = LocalPlayer.Character
+        if character then
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") and part:GetAttribute("HaveMass") then
+                    part.Massless = false
+                end
+            end
+        end
+
+        ClearPetStates(CurrentRideId)
+        ClearPlayerStates()
+        pet.model:ScaleTo(1)
+    end
+    CurrentRideId = nil
+end
+
+local function MountPet(petUniqueId, playerState, petState)
+    local pet = SpawnedPets[petUniqueId]
+    if not pet or not pet.model then return end
+
+    local character = LocalPlayer.Character
+    if not character or not character.PrimaryPart or not character:FindFirstChild("Humanoid") then return end
+
+    DismountPet()
+    CurrentRideId = petUniqueId
+
+    SetPetState(petUniqueId, petState)
+    SetPlayerState(playerState)
+    pet.model:ScaleTo(2)
+    AttachRideConstraint(pet.model)
+
+    RideAnimationTrack = character.Humanoid.Animator:LoadAnimation(AnimationManager.get_track("PlayerRidingPet"))
+    character.Humanoid.Sit = true
+
+    for _, part in pairs(character:GetDescendants()) do
+        if part:IsA("BasePart") and part.Massless == false then
+            part.Massless = true
+            part:SetAttribute("HaveMass", true)
+        end
+    end
+
+    RideAnimationTrack:Play()
+end
+
+local function RidePet(petUniqueId)
+    MountPet(petUniqueId, "PlayerRidingPet", "PetBeingRidden")
+end
+
+local function FlyPet(petUniqueId)
+    MountPet(petUniqueId, "PlayerFlyingPet", "PetBeingFlown")
+end
+
+local function UnequipPet(petData)
+    local pet = SpawnedPets[petData.unique]
+    if not pet or not pet.model then return end
+
+    if CurrentRideId == petData.unique then
+        DismountPet()
+    end
+
+    RemovePetWrapper(petData.unique)
+    RemovePetState(petData.unique)
+    pet.model:Destroy()
+    pet.model = nil
+
+    if EquippedPet and EquippedPet.unique == petData.unique then
+        EquippedPet = nil
+    end
+
+    PetAilmentsCache[petData.unique] = nil
+    task.wait(0.15)
+    AilmentsClient.on_ailments_changed(LocalPlayer)
+end
+
+local function EquipPet(petData)
+    if petData.category ~= "pets" then return end
+
+    if EquippedPet then
+        UnequipPet(EquippedPet)
+    end
+
+    for _, wrapper in pairs(ClientData.get("pet_char_wrappers")) do
+        if wrapper.controller == LocalPlayer then
+            RouterClient.get("ToolAPI/Unequip"):InvokeServer(wrapper.pet_unique)
+        end
+    end
+
+    if not SpawnedPets[petData.unique] then
+        SpawnedPets[petData.unique] = { data = petData, model = nil }
+    end
+
+    local petModel = FetchPetModel(petData.kind):Clone()
+    petModel.Parent = workspace
+    SpawnedPets[petData.unique].model = petModel
+    ApplyNeonVisuals(petModel, petData)
+
+    EquippedPet = petData
+
+    task.defer(function()
+        RegisterPetWrapper({
+            char = petModel,
+            mega_neon = petData.properties.mega_neon or false,
+            neon = petData.properties.neon or false,
+            player = LocalPlayer,
+            entity_controller = LocalPlayer,
+            controller = LocalPlayer,
+            rp_name = petData.properties.rp_name or "",
+            pet_trick_level = petData.properties.pet_trick_level or 0,
+            pet_unique = petData.unique,
+            pet_id = petData.id,
+            location = {
+                full_destination_id = "housing",
+                destination_id = "housing",
+                house_owner = LocalPlayer
+            },
+            pet_progression = {
+                age = petData.properties.age or math.random(1, 6),
+                percentage = math.random(0, 99) / 100
+            },
+            are_colors_sealed = false,
+            is_pet = true,
+        })
+
+        RegisterPetState({
+            char = petModel,
+            player = LocalPlayer,
+            store_key = "pet_state_managers",
+            is_sitting = false,
+            chars_connected_to_me = {},
+            states = {}
+        })
+        task.wait(0.15)
+        AilmentsClient.on_ailments_changed(LocalPlayer)
+    end)
+end
+
+local NextToyOrder = 60000
+
+-- FIXED: CreateInventoryItem with proper error handling
+local function CreateInventoryItem(itemId, category, properties)
+    print("🔧 CreateInventoryItem called for:", itemId, category)
+    
+    -- Validate itemId
+    if not itemId then
+        warn("❌ No itemId provided")
+        return nil
+    end
+    
+    local uniqueId = GenerateUniqueID()
+    local itemKindData = KindDB[itemId]
+
+    if not itemKindData then
+        warn("❌ Item not found in KindDB: " .. tostring(itemId))
+        -- Try to find it in InventoryDB as fallback
+        for id, info in pairs(InventoryDB.pets or {}) do
+            if id == itemId then
+                print("✅ Found in InventoryDB as fallback")
+                itemKindData = { kind = info.name, name = info.name }
+                break
+            end
+        end
+        if not itemKindData then
+            return nil
+        end
+    end
+
+    properties = properties or {}
+    local newnessValue = NextToyOrder
+
+    if category == "pets" then
+        local groupKey = GetPropertyGroup(properties)
+        NewnessGroups[groupKey] = NewnessGroups[groupKey] - 1
+        newnessValue = NewnessGroups[groupKey]
+
+        -- Basic required properties
+        if not properties.ailments_completed then
+            properties.ailments_completed = 0
+        end
+
+        if not properties.rp_name or properties.rp_name == "" then
+            properties.rp_name = GenerateUniquePetName()
+        end
+
+        -- Spirit/fusion data
+        if not properties.spirit_energy then
+            properties.spirit_energy = math.random(850, 1000) / 100
+        end
+        
+        if not properties.spirit_progress then
+            properties.spirit_progress = 1.0
+        end
+        
+        if not properties.fusion_timestamp then
+            properties.fusion_timestamp = os.time() - math.random(86400, 604800)
+        end
+        
+        if not properties.spirit_multiplier then
+            properties.spirit_multiplier = 1.0 + (math.random(0, 50) / 100)
+        end
+        
+        if not properties.last_fusion_attempt then
+            properties.last_fusion_attempt = 0
+        end
+        
+        if not properties.fusion_cooldown then
+            properties.fusion_cooldown = 0
+        end
+
+        -- Spirit collection history
+        if not properties.spirit_collection then
+            properties.spirit_collection = {
+                total_collected = math.random(500, 2000),
+                daily_spirits = math.random(50, 150),
+                weekly_spirits = math.random(300, 800),
+                best_streak = math.random(7, 30),
+                current_streak = math.random(3, 15)
+            }
+        end
+
+        -- Fusion history
+        if not properties.fusion_history then
+            local fusionCount = 0
+            if properties.neon then
+                fusionCount = 1
+            elseif properties.mega_neon then
+                fusionCount = 2
+            end
+            
+            properties.fusion_history = {}
+            for i = 1, fusionCount do
+                table.insert(properties.fusion_history, {
+                    timestamp = os.time() - (86400 * (30 * i)),
+                    spirit_used = math.random(800, 1000) / 100,
+                    result = "success"
+                })
+            end
+        end
+
+        -- Spirit bond
+        if not properties.spirit_bond then
+            properties.spirit_bond = {
+                level = math.random(50, 100),
+                experience = math.random(1000, 5000),
+                last_interaction = os.time() - math.random(3600, 86400)
+            }
+        end
+
+        -- Age progress
+        if not properties.age_progress then
+            properties.age_progress = 1.0
+        end
+
+        -- Growth timestamps
+        if not properties.grown_timestamps then
+            properties.grown_timestamps = {
+                newborn = os.time() - (86400 * 7),
+                junior = os.time() - (86400 * 5),
+                pre_teen = os.time() - (86400 * 3),
+                teen = os.time() - (86400 * 2),
+                post_teen = os.time() - (86400 * 1),
+                full_grown = os.time()
+            }
+        end
+
+        -- Neon progress
+        if properties.neon or properties.mega_neon then
+            if not properties.neon_progress then
+                properties.neon_progress = 1.0
+            end
+            
+            if properties.mega_neon and not properties.mega_progress then
+                properties.mega_progress = 1.0
+            end
+        end
+
+        -- Origin data
+        if not properties.origin then
+            properties.origin = {
+                type = "hatched",
+                timestamp = os.time() - (86400 * 30),
+                egg = {"Cracked Egg", "Pet Egg", "Royal Egg", "Fossil Egg"}[math.random(1, 4)]
+            }
+        end
+
+        -- Trade flags
+        if properties.never_traded == nil then
+            properties.never_traded = true
+        end
+
+        if not properties.original_owner then
+            properties.original_owner = LocalPlayer.UserId
+        end
+
+        -- Pet stats
+        if not properties.tasks_completed then
+            properties.tasks_completed = math.random(500, 2000)
+        end
+
+        if not properties.pet_age_in_seconds then
+            properties.pet_age_in_seconds = os.time() - (86400 * 30)
+        end
+
+        if not properties.friendship_level then
+            properties.friendship_level = math.random(50, 100)
+        end
+
+        if not properties.times_traded then
+            properties.times_traded = 0
+        end
+
+        -- Spirit aura
+        if not properties.spirit_aura then
+            properties.spirit_aura = {
+                color = Color3.new(math.random(), math.random(), math.random()),
+                intensity = math.random(50, 100) / 100,
+                particle_effect = "spirit_" .. math.random(1, 5)
+            }
+        end
+
+        -- Fusion readiness
+        if not properties.fusion_ready then
+            properties.fusion_ready = true
+        end
+
+        -- Spirit quality
+        if not properties.spirit_quality then
+            local qualities = {"common", "uncommon", "rare", "epic", "legendary"}
+            properties.spirit_quality = qualities[math.random(3, 5)]
+        end
+
+    else
+        NextToyOrder = NextToyOrder - 1
+        newnessValue = NextToyOrder
+    end
+
+    local itemData = {
+        unique = uniqueId,
+        category = category,
+        id = itemId,
+        kind = itemKindData.kind or itemKindData.name,
+        newness_order = newnessValue,
+        properties = properties,
+        _source = "blueprint.lua"
+    }
+
+    -- DIAGNOSTIC: Check inventory structure
+    print("📦 Attempting to add to inventory...")
+    local identity = get_thread_identity and get_thread_identity() or 8
+    set_thread_identity(2)
+    
+    local inventory = ClientData.get("inventory")
+    if not inventory then
+        warn("❌ ClientData.get('inventory') returned nil!")
+        set_thread_identity(identity)
+        return nil
+    end
+    
+    print("Inventory type:", type(inventory))
+    print("Inventory keys:", table.concat(table.keys(inventory) or {}, ", "))
+    
+    if not inventory[category] then
+        warn("❌ Inventory has no category:", category)
+        warn("Available categories:", table.concat(table.keys(inventory) or {}, ", "))
+        set_thread_identity(identity)
+        return nil
+    end
+    
+    print("✅ Found category:", category)
+    inventory[category][uniqueId] = itemData
+    print("✅ Item added to inventory at:", uniqueId)
+    
+    set_thread_identity(identity)
+
+    if category == "pets" then
+        SpawnedPets[uniqueId] = { data = itemData, model = nil }
+        print("✅ Pet added to SpawnedPets")
+    end
+    
+    SpawnedItems[uniqueId] = true
+
+    task.defer(function()
+        if UIManager and UIManager.apps and UIManager.apps.BackpackApp then
+            pcall(function()
+                UIManager.apps.BackpackApp:refresh_rendered_items()
+                print("✅ Backpack refreshed")
+            end)
+        end
+    end)
+
+    print("✅ Successfully created item:", uniqueId)
+    return itemData
+end
+
+local function DeleteAllSpawnedPets()
+    local identity = get_thread_identity and get_thread_identity() or 8
+    set_thread_identity(2)
+    
+    local inventory = ClientData.get("inventory")
+    local removed = 0
+    
+    if inventory and inventory.pets then
+        for uniqueId, _ in pairs(SpawnedItems) do
+            if inventory.pets[uniqueId] and inventory.pets[uniqueId]._source == "blueprint.lua" then
+                inventory.pets[uniqueId] = nil
+                removed = removed + 1
+            end
+        end
+    end
+    
+    set_thread_identity(identity)
+    
+    for uniqueId, _ in pairs(SpawnedPets) do
+        if SpawnedPets[uniqueId] and SpawnedPets[uniqueId].data and SpawnedPets[uniqueId].data._source == "blueprint.lua" then
+            if SpawnedPets[uniqueId].model then
+                SpawnedPets[uniqueId].model:Destroy()
+            end
+        end
+    end
+    
+    SpawnedPets = {}
+    SpawnedItems = {}
+    PetAilmentsCache = {}
+    EquippedPet = nil
+    CurrentRideId = nil
+    
+    task.defer(function()
+        if UIManager and UIManager.apps and UIManager.apps.BackpackApp then
+            UIManager.apps.BackpackApp:refresh_rendered_items()
+        end
+    end)
+    
+    return removed
+end
+
+-- FIXED: FindPetId with case-insensitive matching and debugging
+local function FindPetId(petName)
+    print("🔍 Searching for pet:", petName)
+    
+    if not InventoryDB or not InventoryDB.pets then
+        warn("❌ InventoryDB.pets is not available!")
+        return nil
+    end
+    
+    local searchName = petName:lower():gsub("%s+", " ") -- Normalize spaces
+    print("Normalized search name:", searchName)
+    
+    -- First try exact match
+    for id, info in pairs(InventoryDB.pets) do
+        if info and info.name then
+            local infoName = info.name:lower():gsub("%s+", " ")
+            if infoName == searchName then
+                print("✅ Found exact match:", id, info.name)
+                return id
+            end
+        end
+    end
+    
+    -- Then try partial match
+    for id, info in pairs(InventoryDB.pets) do
+        if info and info.name then
+            local infoName = info.name:lower():gsub("%s+", " ")
+            if infoName:find(searchName, 1, true) or searchName:find(infoName, 1, true) then
+                print("✅ Found partial match:", id, info.name)
+                return id
+            end
+        end
+    end
+    
+    warn("❌ No match found for:", petName)
+    return nil
+end
+
+local function FindToyId(toyName)
+    for id, info in pairs(InventoryDB.toys) do
+        if info.name:lower() == toyName:lower() then
+            return id
+        end
+    end
+    return nil
+end
+
+local function FindItemId(itemName)
+    local categories = {
+        {name = "pets", finder = FindPetId},
+        {name = "toys", finder = FindToyId}
+    }
+    
+    for _, cat in ipairs(categories) do
+        local id = cat.finder(itemName)
+        if id then return id, cat.name end
+    end
+    return nil, nil
+end
+
+local OriginalRouterGet = RouterClient.get
+
+function RouterClient.get(endpoint)
+    if endpoint == "ToolAPI/Equip" then
+        return {
+            InvokeServer = function(_, uniqueId)
+                local pet = SpawnedPets[uniqueId]
+                if not pet then
+                    return OriginalRouterGet("ToolAPI/Equip"):InvokeServer(uniqueId)
+                end
+                EquipPet(pet.data)
+                return true, { action = "equip", is_server = true }
+            end
+        }
+    elseif endpoint == "ToolAPI/Unequip" then
+        return {
+            InvokeServer = function(_, uniqueId)
+                local pet = SpawnedPets[uniqueId]
+                if not pet then
+                    return OriginalRouterGet("ToolAPI/Unequip"):InvokeServer(uniqueId)
+                end
+                UnequipPet(pet.data)
+                return true, { action = "unequip", is_server = true }
+            end
+        }
+    elseif endpoint == "AdoptAPI/RidePet" then
+        return {
+            InvokeServer = function(_, petData)
+                local pet = SpawnedPets[petData.pet_unique]
+                if not pet then
+                    return OriginalRouterGet("AdoptAPI/RidePet"):InvokeServer(petData)
+                end
+                RidePet(petData.pet_unique)
+                return true
+            end
+        }
+    elseif endpoint == "AdoptAPI/FlyPet" then
+        return {
+            InvokeServer = function(_, petData)
+                local pet = SpawnedPets[petData.pet_unique]
+                if not pet then
+                    return OriginalRouterGet("AdoptAPI/FlyPet"):InvokeServer(petData)
+                end
+                FlyPet(petData.pet_unique)
+                return true
+            end
+        }
+    elseif endpoint == "AdoptAPI/ExitSeatStates" then
+        return {
+            FireServer = function()
+                if CurrentRideId then
+                    DismountPet()
+                    return true
+                end
+                return OriginalRouterGet("AdoptAPI/ExitSeatStates"):FireServer()
+            end
+        }
+    elseif endpoint == "SettingsAPI/SetPetRoleplayName" then
+        return {
+            InvokeServer = function(_, petUniqueId, newName)
+                local pet = SpawnedPets[petUniqueId]
+                if not pet then
+                    return OriginalRouterGet("SettingsAPI/SetPetRoleplayName"):InvokeServer(petUniqueId, newName)
+                end
+                
+                local identity = get_thread_identity and get_thread_identity() or 8
+                set_thread_identity(2)
+                
+                local inventory = ClientData.get("inventory")
+                if inventory and inventory.pets and inventory.pets[petUniqueId] then
+                    inventory.pets[petUniqueId].properties.rp_name = newName
+                end
+                
+                if pet.data then
+                    pet.data.properties.rp_name = newName
+                end
+                
+                local wrappers = ClientData.get("pet_char_wrappers")
+                for _, wrapper in pairs(wrappers) do
+                    if wrapper.pet_unique == petUniqueId then
+                        wrapper.rp_name = newName
+                        break
+                    end
+                end
+                
+                set_thread_identity(identity)
+                return true
+            end
+        }
+    else
+        return OriginalRouterGet(endpoint)
+    end
+end
+
+-- Unequip existing pets
+for _, wrapper in pairs(ClientData.get("pet_char_wrappers") or {}) do
+    pcall(function()
+        OriginalRouterGet("ToolAPI/Unequip"):InvokeServer(wrapper.pet_unique)
+    end)
+end
+
+-- GUI Creation (keeping your existing GUI code)
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "blueprint_lua"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.IgnoreGuiInset = false
+screenGui.Parent = playerGui
+
+-- [Rest of your GUI code remains exactly the same - keeping it short here for brevity]
+-- ... (paste your full GUI code here)
+
+-- FIXED: Spawn button with better error handling
+spawnButton.MouseButton1Click:Connect(function()
+    print("🚀 Spawn button clicked")
+    local petName = nameInput.Text
+    if petName == "" then 
+        print("❌ No pet name entered")
+        return 
+    end
+    
+    print("Looking for pet:", petName)
+    local petId = FindPetId(petName)
+    if not petId then 
+        print("❌ Could not find pet ID for:", petName)
+        spawnButton.Text = "❌ NOT FOUND!"
+        task.wait(1)
+        spawnButton.Text = "✨ SPAWN PET"
+        return 
+    end
+    
+    print("Found petId:", petId)
+    
+    local ageMap = {1, 2, 3, 4, 5, 6}
+    local options = {
+        mega_neon = flagState["M"],
+        neon = flagState["N"],
+        flyable = flagState["F"],
+        rideable = flagState["R"],
+        age = ageMap[currentAge],
+        trick_level = 5,
+        ailments_completed = 0,
+        rp_name = GenerateUniquePetName(),
+        
+        -- Spirit/fusion data
+        spirit_energy = 10.0,
+        spirit_progress = 1.0,
+        spirit_multiplier = 1.5,
+        fusion_ready = true,
+        spirit_quality = "legendary",
+        
+        age_progress = 1.0,
+        never_traded = true,
+        original_owner = LocalPlayer.UserId,
+        times_traded = 0
+    }
+    
+    if options.neon or options.mega_neon then
+        options.neon_progress = 1.0
+        if options.mega_neon then
+            options.mega_progress = 1.0
+        end
+    end
+    
+    print("Creating inventory item with options:", table.concat(table.keys(options) or {}, ", "))
+    local item = CreateInventoryItem(petId, "pets", options)
+    
+    if item then
+        print("✅ Item created successfully:", item.unique)
+        spawnButton.Text = "✓ SPAWNED!"
+        task.wait(0.5)
+        spawnButton.Text = "✨ SPAWN PET"
+        
+        -- Open backpack to show the pet
+        task.wait(0.2)
+        pcall(function()
+            if UIManager and UIManager.apps and UIManager.apps.BackpackApp then
+                UIManager.apps.BackpackApp:open()
+            end
+        end)
+    else
+        print("❌ Failed to create item")
+        spawnButton.Text = "❌ FAILED!"
+        task.wait(1)
+        spawnButton.Text = "✨ SPAWN PET"
+    end
+end)
+
+-- FIXED: Spawn all button
+spawnAllButton.MouseButton1Click:Connect(function()
+    print("🚀 Spawn all button clicked")
+    local ageMap = {1, 2, 3, 4, 5, 6}
+    local options = {
+        mega_neon = flagState["M"],
+        neon = flagState["N"],
+        flyable = flagState["F"],
+        rideable = flagState["R"],
+        age = ageMap[currentAge],
+        trick_level = 5,
+        ailments_completed = 0,
+        
+        spirit_energy = 10.0,
+        spirit_progress = 1.0,
+        spirit_multiplier = 1.5,
+        fusion_ready = true,
+        spirit_quality = "legendary",
+        
+        age_progress = 1.0,
+        never_traded = true,
+        original_owner = LocalPlayer.UserId,
+        times_traded = 0
+    }
+    
+    if options.neon or options.mega_neon then
+        options.neon_progress = 1.0
+        if options.mega_neon then
+            options.mega_progress = 1.0
+        end
+    end
+    
+    local successCount = 0
+    local failCount = 0
+    spawnAllButton.Text = "⚡ SPAWNING..."
+    
+    for _, petName in ipairs(HighTierPets) do
+        print("Spawning:", petName)
+        local petId = FindPetId(petName)
+        if petId then
+            local petOptions = table.clone(options)
+            petOptions.rp_name = GenerateUniquePetName()
+            
+            local item = CreateInventoryItem(petId, "pets", petOptions)
+            if item then
+                successCount = successCount + 1
+                print("✅ Spawned:", petName)
+            else
+                failCount = failCount + 1
+                print("❌ Failed:", petName)
+            end
+        else
+            failCount = failCount + 1
+            print("❌ No ID for:", petName)
+        end
+        task.wait(0.05)
+    end
+    
+    spawnAllButton.Text = "✓ " .. successCount .. " SPAWNED, " .. failCount .. " FAILED"
+    task.wait(2)
+    spawnAllButton.Text = "👑 SPAWN ALL HIGH TIERS"
+    
+    -- Open backpack
+    task.wait(0.2)
+    pcall(function()
+        if UIManager and UIManager.apps and UIManager.apps.BackpackApp then
+            UIManager.apps.BackpackApp:open()
+        end
+    end)
+end)
+
+print("📜 blueprint.lua loaded - Check F9 console for diagnostic info!")
