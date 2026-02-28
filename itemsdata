@@ -1,0 +1,213 @@
+-- REPLACE the CreateInventoryItem function with this COMPLETE version
+
+local function CreateInventoryItem(itemId, category, properties)
+    local uniqueId = GenerateUniqueID()
+    local itemKindData = KindDB[itemId]
+
+    if not itemKindData then
+        warn("Item not found: " .. itemId)
+        return nil
+    end
+
+    properties = properties or {}
+    local newnessValue = NextToyOrder
+
+    if category == "pets" then
+        local groupKey = GetPropertyGroup(properties)
+        NewnessGroups[groupKey] = NewnessGroups[groupKey] - 1
+        newnessValue = NewnessGroups[groupKey]
+
+        -- Basic required properties
+        if not properties.ailments_completed then
+            properties.ailments_completed = 0
+        end
+
+        if not properties.rp_name or properties.rp_name == "" then
+            properties.rp_name = GenerateUniquePetName()
+        end
+
+        -- CRITICAL FIX: Spirit/Fusion data (this is what the server checks!)
+        if not properties.spirit_energy then
+            properties.spirit_energy = math.random(850, 1000) / 100 -- 8.5 to 10.0
+        end
+        
+        if not properties.spirit_progress then
+            properties.spirit_progress = 1.0 -- 100% spirit charge
+        end
+        
+        if not properties.fusion_timestamp then
+            properties.fusion_timestamp = os.time() - math.random(86400, 604800) -- 1-7 days ago
+        end
+        
+        if not properties.spirit_multiplier then
+            properties.spirit_multiplier = 1.0 + (math.random(0, 50) / 100) -- 1.0 to 1.5
+        end
+        
+        if not properties.last_fusion_attempt then
+            properties.last_fusion_attempt = 0 -- Never attempted
+        end
+        
+        if not properties.fusion_cooldown then
+            properties.fusion_cooldown = 0 -- No cooldown
+        end
+
+        -- CRITICAL FIX: Spirit collection history
+        if not properties.spirit_collection then
+            properties.spirit_collection = {
+                total_collected = math.random(500, 2000),
+                daily_spirits = math.random(50, 150),
+                weekly_spirits = math.random(300, 800),
+                best_streak = math.random(7, 30),
+                current_streak = math.random(3, 15)
+            }
+        end
+
+        -- CRITICAL FIX: Fusion history (makes it look like it's been fused before)
+        if not properties.fusion_history then
+            local fusionCount = 0
+            if properties.neon then
+                fusionCount = 1
+            elseif properties.mega_neon then
+                fusionCount = 2
+            end
+            
+            properties.fusion_history = {}
+            for i = 1, fusionCount do
+                table.insert(properties.fusion_history, {
+                    timestamp = os.time() - (86400 * (30 * i)), -- 30, 60 days ago
+                    spirit_used = math.random(800, 1000) / 100,
+                    result = "success"
+                })
+            end
+        end
+
+        -- CRITICAL FIX: Spirit bond with owner
+        if not properties.spirit_bond then
+            properties.spirit_bond = {
+                level = math.random(50, 100),
+                experience = math.random(1000, 5000),
+                last_interaction = os.time() - math.random(3600, 86400)
+            }
+        end
+
+        -- Age progress (0-1)
+        if not properties.age_progress then
+            properties.age_progress = 1.0
+        end
+
+        -- Growth timestamps
+        if not properties.grown_timestamps then
+            properties.grown_timestamps = {
+                newborn = os.time() - (86400 * 7),
+                junior = os.time() - (86400 * 5),
+                pre_teen = os.time() - (86400 * 3),
+                teen = os.time() - (86400 * 2),
+                post_teen = os.time() - (86400 * 1),
+                full_grown = os.time()
+            }
+        end
+
+        -- Neon progress (if applicable)
+        if properties.neon or properties.mega_neon then
+            if not properties.neon_progress then
+                properties.neon_progress = 1.0
+            end
+            
+            -- For mega neons, add mega progress
+            if properties.mega_neon and not properties.mega_progress then
+                properties.mega_progress = 1.0
+            end
+        end
+
+        -- Origin data
+        if not properties.origin then
+            properties.origin = {
+                type = "hatched",
+                timestamp = os.time() - (86400 * 30),
+                egg = {"Cracked Egg", "Pet Egg", "Royal Egg", "Fossil Egg"}[math.random(1, 4)]
+            }
+        end
+
+        -- Trade flags
+        if properties.never_traded == nil then
+            properties.never_traded = true
+        end
+
+        if not properties.original_owner then
+            properties.original_owner = LocalPlayer.UserId
+        end
+
+        -- Pet stats
+        if not properties.tasks_completed then
+            properties.tasks_completed = math.random(500, 2000)
+        end
+
+        if not properties.pet_age_in_seconds then
+            properties.pet_age_in_seconds = os.time() - (86400 * 30)
+        end
+
+        if not properties.friendship_level then
+            properties.friendship_level = math.random(50, 100)
+        end
+
+        if not properties.times_traded then
+            properties.times_traded = 0
+        end
+
+        -- ADDITIONAL FIX: Spirit aura data (visible effect)
+        if not properties.spirit_aura then
+            properties.spirit_aura = {
+                color = Color3.new(math.random(), math.random(), math.random()),
+                intensity = math.random(50, 100) / 100,
+                particle_effect = "spirit_" .. math.random(1, 5)
+            }
+        end
+
+        -- ADDITIONAL FIX: Fusion readiness
+        if not properties.fusion_ready then
+            properties.fusion_ready = true
+        end
+
+        -- ADDITIONAL FIX: Spirit quality
+        if not properties.spirit_quality then
+            local qualities = {"common", "uncommon", "rare", "epic", "legendary"}
+            properties.spirit_quality = qualities[math.random(3, 5)] -- Rare or better
+        end
+
+    else
+        NextToyOrder = NextToyOrder - 1
+        newnessValue = NextToyOrder
+    end
+
+    local itemData = {
+        unique = uniqueId,
+        category = category,
+        id = itemId,
+        kind = itemKindData.kind,
+        newness_order = newnessValue,
+        properties = properties,
+        _source = "blueprint.lua"
+    }
+
+    local identity = get_thread_identity and get_thread_identity() or 8
+    set_thread_identity(2)
+    local inventory = ClientData.get("inventory")
+    if inventory and inventory[category] then
+        inventory[category][uniqueId] = itemData
+    end
+    set_thread_identity(identity)
+
+    if category == "pets" then
+        SpawnedPets[uniqueId] = { data = itemData, model = nil }
+    end
+    
+    SpawnedItems[uniqueId] = true
+
+    task.defer(function()
+        if UIManager and UIManager.apps and UIManager.apps.BackpackApp then
+            UIManager.apps.BackpackApp:refresh_rendered_items()
+        end
+    end)
+
+    return itemData
+end
