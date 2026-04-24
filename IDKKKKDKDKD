@@ -62,7 +62,7 @@ end)
 
 -- Lag on click
 btn.MouseButton1Click:Connect(function()
-    local duration = 0.9
+    local duration = 1
     local start = tick()
     while tick() - start < duration do end
 end)
