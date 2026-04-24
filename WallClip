@@ -1,0 +1,68 @@
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local playerGui = player.PlayerGui
+local uis = game:GetService("UserInputService")
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "LagButton"
+gui.ResetOnSpawn = false
+gui.Parent = playerGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 120, 0, 50)
+frame.Position = UDim2.new(0, 100, 0, 100)
+frame.BackgroundColor3 = Color3.fromRGB(255, 105, 180)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Parent = gui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = frame
+
+local label = Instance.new("TextLabel")
+label.Size = UDim2.new(1, 0, 1, 0)
+label.BackgroundTransparency = 1
+label.Text = "LAG"
+label.TextColor3 = Color3.new(1, 1, 1)
+label.TextScaled = true
+label.Font = Enum.Font.GothamBold
+label.Parent = frame
+
+local btn = Instance.new("TextButton")
+btn.Size = UDim2.new(1, 0, 1, 0)
+btn.BackgroundTransparency = 1
+btn.Text = ""
+btn.Parent = frame
+
+-- Drag logic
+local dragging = false
+local dragStart, startPos
+
+btn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = frame.Position
+    end
+end)
+
+btn.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+
+uis.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- Lag on click
+btn.MouseButton1Click:Connect(function()
+    local duration = 1 + math.random()
+    local start = tick()
+    while tick() - start < duration do end
+end)
